@@ -1,10 +1,19 @@
 import '../css/app.css';
-
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { initializeTheme } from './composables/useAppearance';
+import { route } from 'ziggy-js';
+import { Ziggy } from './ziggy'; // wenn du artisan ziggy:generate benutzt
+import '../css/stylesheet.css';
+import './neu.js';
+
+
+// global verfügbar machen
+(window as any).route = route;
+(window as any).Ziggy = Ziggy;
+
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
