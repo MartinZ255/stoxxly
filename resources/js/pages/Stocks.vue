@@ -9,13 +9,12 @@ import {
     CandlestickSeries,
 } from 'lightweight-charts';
 import { route } from 'ziggy-js';
-import '../../css/stylesheet.css';
 
 const dashboardUrl = route('dashboard');
 const stocksUrl = route('stocks');
 
 // 🔹 Auswahloptionen
-const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'XRPUSDT'];
+const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'XRPUSDT', 'SOLUSDT'];
 const intervals = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '12h', '1d'];
 
 const selectedSymbol = ref('BTCUSDT');

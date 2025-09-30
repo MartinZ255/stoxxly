@@ -6,8 +6,6 @@ import { createApp, h } from 'vue';
 import { initializeTheme } from './composables/useAppearance';
 import { route } from 'ziggy-js';
 import { Ziggy } from './ziggy'; // wenn du artisan ziggy:generate benutzt
-import '../css/stylesheet.css';
-import './neu.js';
 
 
 // global verfügbar machen
