@@ -2,6 +2,7 @@
 import { Head, router } from "@inertiajs/vue3"
 import AppLayout from "../App.vue"
 import { ref, onMounted } from "vue"
+import { BellAlertIcon, ArrowTopRightOnSquareIcon, TrashIcon } from "@heroicons/vue/24/outline"
 
 interface WatchlistItem {
     symbol: string
@@ -24,6 +25,10 @@ function removeSymbol(symbol: string) {
 
 function goToCurrency(symbol: string) {
     router.visit(`/currencies?symbol=${symbol}`)
+}
+
+function createAlert(symbol: string) {
+    alert(`Alert für ${symbol} erstellen`)
 }
 </script>
 
@@ -75,17 +80,31 @@ function goToCurrency(symbol: string) {
                 >
                     {{ item.change24h }} %
                 </td>
-                <td class="py-2 px-3 text-right space-x-3">
+                <td class="py-2 px-4 text-right flex justify-end gap-4">
+                    <!-- Alert Button -->
+                    <button
+                        @click="createAlert(item.symbol)"
+                        class="flex items-center gap-1 text-yellow-500 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-300 text-sm"
+                    >
+                        <BellAlertIcon class="h-5 w-5" />
+                        Alert
+                    </button>
+
+                    <!-- Springe zur Währung -->
                     <button
                         @click="goToCurrency(item.symbol)"
-                        class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                        class="flex items-center gap-1 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
                     >
-                        Springe zur Währung
+                        <ArrowTopRightOnSquareIcon class="h-5 w-5" />
+                        Zur Währung
                     </button>
+
+                    <!-- Entfernen -->
                     <button
                         @click="removeSymbol(item.symbol)"
-                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        class="flex items-center gap-1 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm"
                     >
+                        <TrashIcon class="h-5 w-5" />
                         Entfernen
                     </button>
                 </td>

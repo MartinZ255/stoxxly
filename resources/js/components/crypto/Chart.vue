@@ -5,9 +5,8 @@
     ></div>
 </template>
 
-
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from "vue"
+import { ref, onMounted, onBeforeUnmount, watch } from "vue"
 import {
     createChart,
     IChartApi,
@@ -165,6 +164,17 @@ function connectWs() {
 }
 
 /**
+ * Chart neu initialisieren bei Symbol/Intervall-Wechsel
+ */
+async function reloadChart() {
+    if (!chartContainer.value) return
+    chart?.remove()
+    initChart(chartContainer.value)
+    await loadAllHistory(props.symbol, props.interval)
+    connectWs()
+}
+
+/**
  * Mount + Cleanup
  */
 onMounted(async () => {
@@ -181,14 +191,13 @@ onMounted(async () => {
 
     // Darkmode-Event → Chart neu rendern
     const observer = new MutationObserver(() => {
-        if (chartContainer.value) {
-            chart?.remove()
-            initChart(chartContainer.value)
-            loadAllHistory(props.symbol, props.interval)
-        }
+        reloadChart()
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] })
 })
+
+watch(() => props.interval, reloadChart)
+watch(() => props.symbol, reloadChart)
 
 onBeforeUnmount(() => {
     ws?.close()

@@ -2,6 +2,7 @@
 import { Head } from "@inertiajs/vue3"
 import Navbar from "./layouts/Navbar.vue"
 import Footer from "./layouts/Footer.vue"
+import ChatSidebar from "./layouts/ChatSidebar.vue"
 
 function onOpenLogin() {
     console.log("Login Modal öffnen (kommt später)")
@@ -22,6 +23,7 @@ function onOpenLogin() {
             <slot /> <!-- Hier rendert Inertia die aktuelle Seite -->
         </main>
 
+        <ChatSidebar /> <!-- 🔹 Sidebar-Chat immer verfügbar -->
     </div>
     <Footer />
 </template>

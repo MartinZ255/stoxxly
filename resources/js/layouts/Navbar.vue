@@ -34,19 +34,48 @@
                 <div class="hidden lg:flex items-center space-x-6">
                     <a :href="route('currencies')" class="nav-link text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">Currencies</a>
                     <a :href="route('communitys')" class="nav-link text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">Communitys</a>
-                    <a :href="route('watchlist')" class="nav-link text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">Watchlist</a>
+                    <a :href="route('indicators.index')" class="nav-link text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">Indikatoren</a>
 
                     <!-- 🔹 Auth-Bereich -->
                     <template v-if="$page.props.auth && $page.props.auth.user">
-                        <span class="text-gray-700 dark:text-gray-200">
-                            Hallo, {{ $page.props.auth.user.name }}
-                        </span>
-                        <button
-                            @click="logout"
-                            class="px-3 py-2 rounded-md text-sm font-medium bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700"
-                        >
-                            Logout
-                        </button>
+                        <!-- Wrapper für Dropdown -->
+                        <div class="relative group">
+                            <!-- Trigger -->
+                            <span class="cursor-pointer text-gray-700 dark:text-gray-200">
+                {{ $page.props.auth.user.name }}
+              </span>
+
+                            <!-- Dropdown -->
+                            <div
+                                class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700
+                       opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200"
+                            >
+                                <a
+                                    :href="route('watchlist')"
+                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                >
+                                    Watchlist
+                                </a>
+                                <a
+                                    :href="route('alerts')"
+                                class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                >
+                                Preiswecker
+                                </a>
+                                <a
+                                    :href="route('settings')"
+                                class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                >
+                                Einstellungen
+                                </a>
+                                <button
+                                    @click="logout"
+                                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700"
+                                >
+                                    Abmelden
+                                </button>
+                            </div>
+                        </div>
                     </template>
                     <template v-else>
                         <button

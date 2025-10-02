@@ -2,6 +2,12 @@
 import { Head } from "@inertiajs/vue3"
 import AppLayout from "../App.vue"
 import { ref, computed, onMounted } from "vue"
+import {
+    ChartBarIcon,
+    InformationCircleIcon,
+    UserMinusIcon,
+    UserPlusIcon,
+} from "@heroicons/vue/24/outline"
 
 interface Community {
     id: number
@@ -101,25 +107,28 @@ function viewCommunity(id: number) {
                 <div class="flex flex-col md:flex-row gap-2 mt-3 md:mt-0">
                     <button
                         @click="goToWatchlist(c.id)"
-                        class="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600
+                        class="flex items-center gap-1 px-3 py-1 rounded bg-blue-500 hover:bg-blue-600
                    text-white text-sm transition-colors"
                     >
+                        <ChartBarIcon class="h-4 w-4" />
                         Zur Watchlist
                     </button>
                     <button
                         @click="viewCommunity(c.id)"
-                        class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
+                        class="flex items-center gap-1 px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
                    text-gray-800 dark:text-gray-200 text-sm transition-colors"
                     >
+                        <InformationCircleIcon class="h-4 w-4" />
                         Details
                     </button>
                     <button
                         @click="leaveCommunity(c.id)"
-                        class="px-3 py-1 rounded bg-red-500 hover:bg-red-600
+                        class="flex items-center gap-1 px-3 py-1 rounded bg-red-500 hover:bg-red-600
                    text-white text-sm transition-colors"
                         title="Community verlassen"
                     >
-                        –
+                        <UserMinusIcon class="h-4 w-4" />
+                        Verlassen
                     </button>
                 </div>
             </div>
@@ -160,19 +169,21 @@ function viewCommunity(id: number) {
 
                 <div class="flex flex-col md:flex-row gap-2 mt-3 md:mt-0">
                     <button
-                        v-if="!c.joined"
-                        @click="joinCommunity(c.id)"
-                        class="px-3 py-1 rounded bg-green-500 hover:bg-green-600
-                   text-white text-sm transition-colors"
-                    >
-                        Beitreten
-                    </button>
-                    <button
                         @click="viewCommunity(c.id)"
-                        class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
+                        class="flex items-center gap-1 px-3 py-1 rounded bg-gray-200 dark:bg-gray-700
                    text-gray-800 dark:text-gray-200 text-sm transition-colors"
                     >
+                        <InformationCircleIcon class="h-4 w-4" />
                         Details
+                    </button>
+                    <button
+                        v-if="!c.joined"
+                        @click="joinCommunity(c.id)"
+                        class="flex items-center gap-1 px-3 py-1 rounded bg-green-500 hover:bg-green-600
+                   text-white text-sm transition-colors"
+                    >
+                        <UserPlusIcon class="h-4 w-4" />
+                        Beitreten
                     </button>
                 </div>
             </div>

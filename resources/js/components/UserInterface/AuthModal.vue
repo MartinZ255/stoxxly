@@ -2,7 +2,7 @@
 import { ref, computed } from "vue"
 import { router } from "@inertiajs/vue3"
 
-const activeTab = ref<"login" | "register">("login")
+const activeTab = ref<"login" | "register" | "forgot">("login")
 const email = ref("")
 const password = ref("")
 const password_confirmation = ref("")
@@ -21,6 +21,12 @@ function register() {
         email: email.value,
         password: password.value,
         password_confirmation: password_confirmation.value,
+    })
+}
+
+function forgotPassword() {
+    router.post("/forgot-password", {
+        email: email.value,
     })
 }
 
@@ -94,10 +100,19 @@ const passwordRules = computed(() => ({
                 >
                     Login
                 </button>
+                <p class="text-right text-sm mt-2">
+                    <button
+                        type="button"
+                        @click="activeTab='forgot'"
+                        class="text-blue-500 hover:underline"
+                    >
+                        Passwort vergessen?
+                    </button>
+                </p>
             </form>
 
             <!-- Register-Form -->
-            <form v-else class="space-y-4" @submit.prevent="register">
+            <form v-else-if="activeTab==='register'" class="space-y-4" @submit.prevent="register">
                 <input
                     v-model="name"
                     type="text"
@@ -164,6 +179,33 @@ const passwordRules = computed(() => ({
                         ❌ Mindestens ein Sonderzeichen
                     </li>
                 </ul>
+            </form>
+
+            <!-- Forgot Password Form -->
+            <form v-else class="space-y-4" @submit.prevent="forgotPassword">
+                <input
+                    v-model="email"
+                    type="email"
+                    placeholder="E-Mail für Passwort-Reset"
+                    class="w-full border rounded px-3 py-2
+                 bg-gray-50 dark:bg-gray-700
+                 text-gray-900 dark:text-gray-100
+                 placeholder-gray-400 dark:placeholder-gray-500
+                 border-gray-300 dark:border-gray-600
+                 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                />
+                <button
+                    type="submit"
+                    class="w-full bg-yellow-500 hover:bg-yellow-600
+                 text-white py-2 rounded transition-colors"
+                >
+                    Passwort zurücksetzen Link senden
+                </button>
+                <p class="text-sm text-gray-600 dark:text-gray-300 text-center">
+                    <button type="button" @click="activeTab='login'" class="text-blue-500 hover:underline">
+                        Zurück zum Login
+                    </button>
+                </p>
             </form>
         </div>
     </div>
