@@ -14,4 +14,14 @@ class PriceCondition extends Model
         'operator',
         'value',
     ];
+
+    public function indicator()
+    {
+        return $this->belongsTo(Indicator::class);
+    }
+
+    public function priceNotification()
+    {
+        return $this->belongsTo(PriceNotification::class);
+    }
 }
