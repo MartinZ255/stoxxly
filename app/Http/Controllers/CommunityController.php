@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Community;
 use App\Models\User;
+use App\Models\Chat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,51 +29,56 @@ class CommunityController extends Controller
     }
 
     /**
-     * Erstellt eine neue Community.
+     * Erstellt eine neue Community + zugehörigen Chat.
      */
     public function store(Request $request)
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
             'users' => 'nullable|array',
             'users.*.id' => 'required_with:users|exists:users,id',
             'users.*.role' => 'nullable|in:Owner,Admin,Member',
         ]);
 
+        // 🔹 Neue Community anlegen
         $community = Community::create([
             'name' => $data['name'],
+            'description' => $data['description'] ?? '',
         ]);
 
-        // Falls User mitgesendet werden → zuordnen
+        // 🔹 Aktuellen User als Owner hinzufügen
+        $userId = auth()->id();
+        $community->users()->attach($userId, ['role' => 'Owner']);
+
+        // 🔹 Optionale weitere User (Admins / Member)
         if (!empty($data['users'])) {
             foreach ($data['users'] as $user) {
-                $community->users()->attach($user['id'], [
-                    'role' => $user['role'] ?? 'Member',
+                $community->users()->syncWithoutDetaching([
+                    $user['id'] => ['role' => $user['role'] ?? 'Member'],
                 ]);
             }
         }
 
-        return response()->json($community->load('users:id,name,email'), 201);
-    }
+        /*
+        |--------------------------------------------------------------------------
+        | 💬 Passenden Community-Chat automatisch anlegen
+        |--------------------------------------------------------------------------
+        */
+        $chat = Chat::firstOrCreate(
+            [
+                'type' => 'community',
+                'community_id' => $community->id,
+            ],
+            [
+                'name' => 'Chat – ' . $community->name,
+            ]
+        );
 
-    /**
-     * Fügt einen Benutzer zur Community hinzu.
-     */
-    public function addUser(Request $request, Community $community)
-    {
-        $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'role' => 'nullable|in:Owner,Admin,Member',
-        ]);
+        // Ersteller automatisch als Chat-Owner
+        $chat->addUser($userId, 'owner');
 
-        $community->users()->syncWithoutDetaching([
-            $data['user_id'] => ['role' => $data['role'] ?? 'Member'],
-        ]);
-
-        return response()->json([
-            'message' => 'User hinzugefügt',
-            'community' => $community->load('users:id,name,email'),
-        ]);
+        return redirect()->route('communitys')->with('success', 'Community und Chat erstellt.');
     }
 
     /**
@@ -93,21 +99,70 @@ class CommunityController extends Controller
     }
 
     /**
-     * Entfernt einen Benutzer aus der Community.
-     */
-    public function removeUser(Community $community, User $user)
-    {
-        $community->users()->detach($user->id);
-
-        return response()->json(['message' => 'User entfernt']);
-    }
-
-    /**
-     * Löscht eine Community.
+     * Löscht eine Community + zugehörigen Chat.
      */
     public function destroy(Community $community)
     {
+        // 🗑️ Passenden Community-Chat löschen
+        Chat::where('community_id', $community->id)->delete();
+
         $community->delete();
         return response()->noContent();
+    }
+
+    /**
+     * Aktuellen Benutzer einer Community hinzufügen (+ Chatbeitritt).
+     */
+    public function join(Community $community)
+    {
+        $userId = auth()->id();
+
+        // Verhindert doppelte Einträge
+        $community->users()->syncWithoutDetaching([
+            $userId => ['role' => 'Member'],
+        ]);
+
+        // 💬 Automatisch auch dem Community-Chat hinzufügen
+        $chat = Chat::where('type', 'community')
+            ->where('community_id', $community->id)
+            ->first();
+
+        if ($chat && !$chat->hasUser($userId)) {
+            $chat->addUser($userId);
+        }
+
+        return back()->with('success', 'Community beigetreten.');
+    }
+
+    /**
+     * Aktuellen Benutzer aus Community (und Chat) entfernen.
+     */
+    public function leave(Community $community)
+    {
+        $userId = auth()->id();
+
+        // Benutzer aus der Community entfernen
+        $community->users()->detach($userId);
+
+        // 💬 Auch aus dem Community-Chat entfernen
+        $chat = Chat::where('type', 'community')
+            ->where('community_id', $community->id)
+            ->first();
+
+        if ($chat) {
+            $chat->removeUser($userId);
+
+            // Falls Chat keine User mehr hat → löschen
+            if ($chat->users()->count() === 0) {
+                $chat->delete();
+            }
+        }
+
+        // Wenn keine User mehr in der Community → löschen
+        if ($community->users()->count() === 0) {
+            $community->delete();
+        }
+
+        return back()->with('success', 'Community verlassen.');
     }
 }

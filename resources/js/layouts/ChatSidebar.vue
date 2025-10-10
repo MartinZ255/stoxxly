@@ -1,7 +1,7 @@
 <template>
-    <!-- Button zum Öffnen -->
+    <!-- Floating Chat Button -->
     <button
-        @click="isOpen = true"
+        @click="openSidebar"
         class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg z-50"
     >
         💬
@@ -10,7 +10,7 @@
     <!-- Overlay -->
     <div
         v-if="isOpen"
-        @click="closeChat"
+        @click="closeSidebar"
         class="fixed inset-0 bg-black/40 z-40 transition-opacity duration-300"
     ></div>
 
@@ -23,7 +23,7 @@
         <div class="flex items-center p-4 border-b border-gray-200 dark:border-gray-700">
             <button
                 v-if="activeChat"
-                @click="activeChat = null"
+                @click="backToList"
                 class="mr-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
                 <ArrowLeftIcon class="h-5 w-5" />
@@ -32,82 +32,82 @@
                 {{ activeChat ? activeChat.name : "Chats" }}
             </h2>
             <button
-                @click="closeChat"
+                @click="closeSidebar"
                 class="ml-auto text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
                 ✕
             </button>
         </div>
 
-        <!-- Chat-Liste -->
+        <!-- Chat List -->
         <div v-if="!activeChat" class="flex-1 overflow-y-auto">
             <div
-                v-for="chat in chatList"
+                v-for="chat in chats"
                 :key="chat.id"
                 @click="openChat(chat)"
                 class="p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
                 <div class="flex justify-between items-center">
                     <div>
-                        <p class="font-semibold text-gray-900 dark:text-white">{{ chat.name }}</p>
+                        <p class="font-semibold text-gray-900 dark:text-white">
+                            {{ chat.name }}
+                        </p>
                         <p class="text-sm text-gray-600 dark:text-gray-400 truncate w-60">
-                            {{ chat.lastMessage }}
+                            {{ chat.last_message?.message || "Keine Nachrichten" }}
                         </p>
                     </div>
-                    <span class="text-xs text-gray-400">{{ chat.updatedAt }}</span>
+                    <span class="text-xs text-gray-400">
+            {{ formatTime(chat.updated_at) }}
+          </span>
                 </div>
             </div>
         </div>
 
-        <!-- Aktiver Chat -->
+        <!-- Active Chat -->
         <div v-else class="flex flex-col flex-1">
-            <!-- Nachrichten -->
-            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Messages -->
+            <div ref="scrollBox" class="flex-1 overflow-y-auto p-4 space-y-4">
                 <div
-                    v-for="(msg, idx) in activeChat.messages"
-                    :key="idx"
-                    :class="msg.from === 'me' ? 'text-right' : 'text-left'"
+                    v-for="m in messages"
+                    :key="m.id"
+                    :class="m.user_id === currentUserId ? 'text-right' : 'text-left'"
                 >
-                    <!-- Absender in Public & Community -->
                     <div
                         v-if="activeChat.type !== 'private'"
                         class="text-xs text-gray-500 dark:text-gray-400 mb-1"
-                        :class="msg.from === 'me' ? 'text-right' : 'text-left'"
+                        :class="m.user_id === currentUserId ? 'text-right' : 'text-left'"
                     >
-                        {{ msg.user }}
+                        {{ m.user?.name }}
                     </div>
 
-                    <!-- Bubble -->
                     <div
-                        :class="msg.from === 'me' ? 'flex flex-col items-end' : 'flex flex-col items-start'"
+                        :class="m.user_id === currentUserId
+              ? 'flex flex-col items-end'
+              : 'flex flex-col items-start'"
                     >
             <span
-                :class="msg.from === 'me'
+                :class="m.user_id === currentUserId
                 ? 'inline-block bg-blue-500 text-white px-3 py-2 rounded-lg'
                 : 'inline-block bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 rounded-lg'"
             >
-              {{ msg.text }}
+              {{ m.message }}
             </span>
-                        <span class="text-xs text-gray-400 mt-1">{{ msg.time }}</span>
+                        <span class="text-xs text-gray-400 mt-1">
+              {{ formatTime(m.created_at) }}
+            </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Eingabe -->
-            <form
-                @submit.prevent="sendMessage"
-                class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2"
-            >
+            <!-- Message Input -->
+            <form @submit.prevent="sendMessage" class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
                 <input
                     v-model="newMessage"
                     type="text"
                     placeholder="Nachricht schreiben..."
                     class="flex-1 border rounded px-3 py-2 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <button
-                    type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                >
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                     ➤
                 </button>
             </form>
@@ -116,87 +116,115 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
+import { ref, onMounted, onBeforeUnmount, nextTick, computed } from "vue"
+import axios from "axios"
 import { ArrowLeftIcon } from "@heroicons/vue/24/outline"
+import { route } from "ziggy-js"
+import { usePage } from '@inertiajs/vue3'
 
 const isOpen = ref(false)
-const newMessage = ref("")
 const activeChat = ref<any | null>(null)
+const chats = ref<any[]>([])
+const messages = ref<any[]>([])
+const newMessage = ref("")
+const page = usePage()
+const currentUserId = computed(() => page.props.auth.user?.id ?? null)
 
-function nowTime() {
-    return new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+const scrollBox = ref<HTMLDivElement | null>(null)
+
+let pollInterval: number | null = null
+
+function formatTime(t: string | null) {
+    if (!t) return ""
+    return new Date(t).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
 }
 
-const chatList = ref([
-    {
-        id: 1,
-        type: "public",
-        name: "Öffentlicher Chat",
-        lastMessage: "Willkommen 👋",
-        updatedAt: "10:30",
-        messages: [
-            { from: "bot", user: "System", text: "Willkommen im öffentlichen Chat 👋", time: "10:30" },
-            { from: "me", user: "Ich", text: "Hallo zusammen!", time: "10:32" },
-        ],
-    },
-    {
-        id: 2,
-        type: "private",
-        name: "Alice",
-        lastMessage: "Bis später!",
-        updatedAt: "Gestern",
-        messages: [
-            { from: "me", text: "Hi Alice", time: "Gestern 14:05" },
-            { from: "bot", text: "Bis später!", time: "Gestern 14:07" },
-        ],
-    },
-    {
-        id: 3,
-        type: "community",
-        name: "BTC Lovers (Community)",
-        lastMessage: "Moon 🚀",
-        updatedAt: "08:15",
-        messages: [
-            { from: "bot", user: "Admin", text: "Herzlich willkommen in BTC Lovers!", time: "08:15" },
-            { from: "me", user: "Ich", text: "Moon 🚀", time: "08:16" },
-        ],
-    },
-])
-
-function openChat(chat: any) {
-    activeChat.value = chat
+function openSidebar() {
+    isOpen.value = true
+    loadChats()
 }
-
-function closeChat() {
+function closeSidebar() {
     isOpen.value = false
     activeChat.value = null
+    messages.value = []
+    clearPoll()
+}
+function backToList() {
+    activeChat.value = null
+    messages.value = []
+    clearPoll()
 }
 
-function sendMessage() {
+/** Lädt alle Chats des eingeloggten Users */
+async function loadChats() {
+    try {
+        const res = await axios.get(route("chats.index"))
+        chats.value = res.data
+    } catch (e) {
+        console.error("Fehler beim Laden der Chats", e)
+    }
+}
+
+/** Öffnet einen Chat und startet das Polling */
+async function openChat(chat: any) {
+    activeChat.value = chat
+    await loadMessages()
+    startPoll()
+}
+
+/** Lädt Nachrichten eines Chats */
+async function loadMessages() {
+    if (!activeChat.value) return
+    try {
+        const res = await axios.get(route("chats.show", activeChat.value.id))
+        messages.value = res.data.messages || []
+        await nextTick()
+        scrollToBottom()
+    } catch (e) {
+        console.error("Fehler beim Laden der Nachrichten", e)
+    }
+}
+
+/** Nachricht senden */
+async function sendMessage() {
     if (!newMessage.value.trim() || !activeChat.value) return
 
-    const msg = {
-        from: "me",
-        user: "Ich",
-        text: newMessage.value,
-        time: nowTime(),
-    }
-
-    activeChat.value.messages.push(msg)
-    activeChat.value.lastMessage = newMessage.value
-    activeChat.value.updatedAt = "Jetzt"
+    const messageText = newMessage.value
     newMessage.value = ""
 
-    setTimeout(() => {
-        const reply = {
-            from: "bot",
-            user: activeChat.value.type === "private" ? activeChat.value.name : "System",
-            text: "Antwort 🤖",
-            time: nowTime(),
-        }
-        activeChat.value?.messages.push(reply)
-        activeChat.value.lastMessage = reply.text
-        activeChat.value.updatedAt = "Jetzt"
-    }, 1000)
+    try {
+        const res = await axios.post(route("chats.messages.store", activeChat.value.id), {
+            content: messageText,
+        })
+        messages.value.push(res.data)
+        await nextTick()
+        scrollToBottom()
+    } catch (e) {
+        console.error("Fehler beim Senden der Nachricht", e)
+    }
 }
+
+/** Polling für neue Nachrichten */
+function startPoll() {
+    clearPoll()
+    pollInterval = window.setInterval(loadMessages, 4000)
+}
+function clearPoll() {
+    if (pollInterval) {
+        clearInterval(pollInterval)
+        pollInterval = null
+    }
+}
+
+/** Scrollt ans Ende der Nachrichtenliste */
+function scrollToBottom() {
+    if (scrollBox.value) {
+        scrollBox.value.scrollTop = scrollBox.value.scrollHeight
+    }
+}
+
+onMounted(() => {
+    // optional: Chats direkt laden, wenn Sidebar offen
+})
+onBeforeUnmount(() => clearPoll())
 </script>

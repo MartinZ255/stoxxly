@@ -1,81 +1,125 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\IndicatorController;
+use App\Http\Controllers\{
+    ProfileController,
+    IndicatorController,
+    CommunityController,
+    ChatController
+};
+use App\Models\Community;
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+/*
+|--------------------------------------------------------------------------
+| 🔹 Public Routes (ohne Login)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', fn() => Inertia::render('Homepage'))->name('home');
+Route::get('/currencies', fn() => Inertia::render('Currencies'))->name('currencies');
+Route::get('/alerts', fn() => Inertia::render('Alerts'))->name('alerts');
+Route::get('/settings', fn() => Inertia::render('PersonalSettings'))->name('settings');
 
-Route::get('/', function () {
-    return Inertia::render('Homepage');
-})->name('home');
+Route::get('/indicators', [IndicatorController::class, 'index'])->name('indicators.index');
+Route::get('/indicators/{slug}', [IndicatorController::class, 'show'])->name('indicators.show');
 
-Route::get('/currencies', function () {
-    return Inertia::render('Currencies');
-})->name('currencies');
+/*
+|--------------------------------------------------------------------------
+| 🔹 Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified'])->group(function () {
 
-Route::get('/communitys', function () {
-    return Inertia::render('Communitys');
-})->name('communitys');
+    /*
+    |--------------------------------------------------------------------------
+    | 🧭 Dashboard & Profile
+    |--------------------------------------------------------------------------
+    */
+    //Route::get('/dashboard', fn() => Inertia::render('Dashboard'))->name('dashboard');
 
-Route::get('/watchlist', function () {
-    return Inertia::render('Watchlist');
-})->name('watchlist');
-
-Route::get('/alerts', function () {
-    return Inertia::render('Alerts');
-})->name('alerts');
-
-Route::get('/indicators', [IndicatorController::class, 'index']
-)->name('indicators.index');
-
-Route::get('/indicators/{slug}', [IndicatorController::class, 'show'])
-    ->name('indicators.show');
-
-Route::get('/settings', function () {
-    return Inertia::render('PersonalSettings');
-})->name('settings');
-
-Route::get('../resetPassword', function () {
-    return Inertia::render('ResetPassword');
-})->name('resetPassword');
-
-Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🌐 Community Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/communitys', function () {
+        $user = auth()->user();
+
+        $communities = Community::withCount('users')
+            ->with('users:id')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($c) use ($user) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'description' => $c->description,
+                    'users_count' => $c->users_count,
+                    'joined' => $user ? $c->users->contains($user->id) : false,
+                ];
+            });
+
+        return Inertia::render('Communitys', [
+            'communities' => $communities,
+        ]);
+    })->name('communitys');
+
+    Route::post('/communitys', [CommunityController::class, 'store'])->name('communitys.store');
+    Route::post('/communitys/{community}/join', [CommunityController::class, 'join'])->name('communitys.join');
+    Route::delete('/communitys/{community}/leave', [CommunityController::class, 'leave'])->name('communitys.leave');
+
+    /*
+    |--------------------------------------------------------------------------
+    | 💬 Chat Routes
+    |--------------------------------------------------------------------------
+    |
+    | Enthält:
+    | - CRUD für Chats
+    | - Join/Leave
+    | - Nachrichten (storeMessage)
+    |   -> kompatibel mit deinem Frontend (Axios + Polling)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('chats')->name('chats.')->group(function () {
+        Route::get('/', [ChatController::class, 'index'])->name('index');
+        Route::post('/', [ChatController::class, 'store'])->name('store');
+        Route::get('/{chat}', [ChatController::class, 'show'])->name('show');
+        Route::patch('/{chat}', [ChatController::class, 'update'])->name('update');
+        Route::delete('/{chat}', [ChatController::class, 'destroy'])->name('destroy');
+
+        Route::post('/{chat}/join', [ChatController::class, 'join'])->name('join');
+        Route::delete('/{chat}/leave', [ChatController::class, 'leave'])->name('leave');
+
+        // Nachricht speichern (vom Frontend verwendet)
+        Route::post('/{chat}/messages', [ChatController::class, 'storeMessage'])->name('messages.store');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | 🧩 Community → Chat Mapping
+    |--------------------------------------------------------------------------
+    | Optional: Für den Fall, dass jede Community ihren eigenen Chat besitzt.
+    */
+    Route::get('/communitys/{community}/chat', [ChatController::class, 'createForCommunity'])
+        ->name('community.chat');
+
+    /*
+    |--------------------------------------------------------------------------
+    | 📊 Watchlist
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/watchlist', fn() => Inertia::render('Watchlist'))->name('watchlist');
 });
 
+/*
+|--------------------------------------------------------------------------
+| ❗️ Authentifizierung
+|--------------------------------------------------------------------------
+| Fortify/Breeze registrieren Login-, Register-, Reset-Routen automatisch.
+| So werden doppelte Routennamen vermieden.
+*/
 require __DIR__.'/auth.php';
-
-
-
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\NewPasswordController;
-
-Route::post('/register', [RegisteredUserController::class, 'store'])
-    ->name('register');
-
-Route::post('/login', [AuthenticatedSessionController::class, 'store'])
-    ->name('login');
-
-Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
-    ->name('logout');
-
-Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-    ->middleware('guest')
-    ->name('password.email');
-
-Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
-    ->middleware('guest')
-    ->name('password.reset');
-
-Route::post('/reset-password', [NewPasswordController::class, 'store'])
-    ->middleware('guest')
-    ->name('password.store');

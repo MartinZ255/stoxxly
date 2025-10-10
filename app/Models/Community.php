@@ -16,6 +16,7 @@ class Community extends Model
      */
     protected $fillable = [
         'name',
+        'description'
     ];
 
     /**
@@ -35,6 +36,13 @@ class Community extends Model
         return $this->belongsToMany(User::class, 'community_user')
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    protected $appends = ['member_count'];
+
+    public function getMemberCountAttribute()
+    {
+        return $this->users()->count();
     }
 
 }

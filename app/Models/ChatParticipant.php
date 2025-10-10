@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChatParticipant extends Model
 {
     use HasFactory;
 
     /**
-     * Die Felder, die massenweise zuweisbar sind.
+     * Massenweise zuweisbare Felder.
      *
      * @var array<int, string>
      */
@@ -21,66 +22,108 @@ class ChatParticipant extends Model
     ];
 
     /**
+     * ----------------------------
      * Beziehungen
+     * ----------------------------
      */
 
-    // Teilnehmer gehört zu einem Chat
-    public function chat()
+    /** Teilnehmer gehört zu einem Chat. */
+    public function chat(): BelongsTo
     {
         return $this->belongsTo(Chat::class);
     }
 
-    // Teilnehmer gehört zu einem User
-    public function user()
+    /** Teilnehmer gehört zu einem Benutzer. */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     /**
-     * Casts für Datumsfelder
-     *
-     * @return array<string, string>
+     * ----------------------------
+     * Casts
+     * ----------------------------
      */
-    protected function casts(): array
-    {
-        return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     /**
-     * Helper-Methoden für Rollen
+     * ----------------------------
+     * Rollen-Helper
+     * ----------------------------
      */
 
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return strtolower($this->role) === 'owner';
     }
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return strtolower($this->role) === 'admin';
     }
 
     public function isMember(): bool
     {
-        return $this->role === 'member';
+        return strtolower($this->role) === 'member';
+    }
+
+    /** Rolle prüfen (z. B. $participant->hasRole('admin')) */
+    public function hasRole(string $role): bool
+    {
+        return strtolower($this->role) === strtolower($role);
+    }
+
+    /** Rolle neu zuweisen */
+    public function assignRole(string $role): self
+    {
+        $this->role = strtolower($role);
+        $this->save();
+
+        return $this;
+    }
+
+    /** Benutzer zum Admin befördern */
+    public function promoteToAdmin(): self
+    {
+        return $this->assignRole('admin');
+    }
+
+    /** Benutzer auf Member herabstufen */
+    public function demoteToMember(): self
+    {
+        return $this->assignRole('member');
+    }
+
+    /** Benutzer aus dem Chat entfernen */
+    public function removeFromChat(): void
+    {
+        $this->delete();
     }
 
     /**
-     * Scope-Beispiele (optional)
+     * ----------------------------
+     * Scopes
+     * ----------------------------
      */
 
-    // Nur Admins eines Chats abrufen
+    /** Nur Admins eines Chats abrufen */
     public function scopeAdmins($query)
     {
         return $query->where('role', 'admin');
     }
 
-    // Nur Owner abrufen
+    /** Nur Owner abrufen */
     public function scopeOwners($query)
     {
         return $query->where('role', 'owner');
+    }
+
+    /** Nur Members abrufen */
+    public function scopeMembers($query)
+    {
+        return $query->where('role', 'member');
     }
 }
